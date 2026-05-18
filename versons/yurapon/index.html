@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>灯観測装置〜ゆらぽん〜</title>
+<style>
+:root{--ink:#3f365f;--line:rgba(134,112,170,.14);--yellow1:#fff3b8;--yellow2:#efd56e;--shadow:0 16px 42px rgba(55,38,92,.08)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}html{background:#f7f4fb}
+body{margin:0;min-height:100svh;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;font-weight:700;line-height:1.9;overflow-x:hidden;background:#f7f4fb url("./assets/img/bg_main.jpg") center top/cover no-repeat}
+
+/* ============ メインページの背景レイヤー ============ */
+.bg-layer{position:fixed;inset:0;z-index:-2;background:#f7f4fb url("./assets/img/bg_main.jpg") center top/cover no-repeat;filter:saturate(.68) contrast(.92) brightness(1.08);transform:scale(1.02)}
+.bg-layer::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.30);z-index:-1}
+
+/* メインページ表示中はメイン背景、部屋表示中は部屋背景 */
+body.room-mode{background:#0a0618;color:#e8e0f5}
+body.room-mode .bg-layer{display:none}
+
+/* ============ メインページ ============ */
+.page{width:min(100%,430px);margin:0 auto;min-height:100svh;padding:34px 22px 48px;background:rgba(255,255,255,.04);position:relative}
+@media (min-width:760px){.page{margin:28px auto 48px;border-radius:34px;padding:36px 26px 52px;box-shadow:var(--shadow)}}
+.hero{display:grid;grid-template-columns:1fr 106px;align-items:center;gap:18px;margin:0 0 26px;padding:4px 2px 0}
+h1{margin:0;font-size:clamp(32px,8.5vw,42px);line-height:1.28;letter-spacing:-.045em;text-shadow:0 2px 0 rgba(255,255,255,.22)}
+.yurapon-wrap{width:106px;height:106px;border-radius:999px;background:rgba(56,49,66,.74);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(42,32,64,.18);overflow:hidden;flex:none}
+.yurapon{width:105%;height:105%;object-fit:cover;display:block;opacity:1;mix-blend-mode:normal;filter:saturate(.82) contrast(.94) brightness(1.06);pointer-events:none}
+.room-top{display:flex;width:100%;min-height:58px;align-items:center;justify-content:center;margin:0 0 28px;border:1px solid rgba(154,125,185,.12);border-radius:20px;background:rgba(255,255,255,.24);color:var(--ink);text-decoration:none;box-shadow:0 10px 26px rgba(80,60,130,.05);touch-action:manipulation;cursor:pointer;font:inherit}
+.card{margin:0 0 30px;padding:24px 20px 26px;border-radius:26px;border:1px solid var(--line);background:rgba(255,255,255,.38);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 10px 30px rgba(56,40,96,.045)}
+.card h2{margin:0 0 20px;font-size:25px;line-height:1.45;letter-spacing:-.02em}
+.lead{margin:0;font-size:15.5px;line-height:2.2;color:#51466f}
+.result-card{display:none;opacity:0;transform:translateY(8px);transition:opacity .42s ease,transform .42s ease}
+.result-card.show{display:block}
+.result-card.visible{opacity:1;transform:translateY(0)}
+.result-title{font-size:22px;line-height:1.65;margin:0 0 20px}
+.meters{display:grid;gap:14px;margin-top:16px}
+.meter-row{display:grid;grid-template-columns:108px 1fr 38px;gap:10px;align-items:center;font-size:13.5px;line-height:1.5}
+.track{height:12px;border-radius:999px;background:rgba(202,194,218,.34);overflow:hidden}
+.fill{height:100%;border-radius:inherit;width:60%}
+.f1{background:linear-gradient(90deg,rgba(170,232,214,.72),rgba(200,179,255,.72))}
+.f2{background:linear-gradient(90deg,rgba(245,194,144,.72),rgba(238,141,202,.72))}
+.f3{background:linear-gradient(90deg,rgba(243,215,128,.72),rgba(227,129,220,.72))}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:6px 0 18px}
+button.choice,.button-link{appearance:none;border:1px solid rgba(135,116,166,.14);border-radius:18px;min-height:62px;padding:13px 10px;font:inherit;font-size:15px;line-height:1.45;color:var(--ink);background:rgba(255,255,255,.54);cursor:pointer;touch-action:manipulation;pointer-events:auto;text-decoration:none;display:flex;align-items:center;justify-content:center;text-align:center;box-shadow:0 6px 16px rgba(64,45,96,.025)}
+button.choice:active,.button-link:active{transform:translateY(1px)}
+.choice.selected{background:rgba(236,218,255,.46);border-color:rgba(169,127,218,.25)}
+.selected-line{min-height:1.75em;margin:10px 2px 18px;color:#6d608d;font-size:14px;line-height:1.7}
+.poan-btn{width:100%;min-height:62px;border:0;border-radius:18px;background:linear-gradient(180deg,rgba(255,246,190,.88),rgba(240,206,85,.80));color:#5b4920;box-shadow:0 8px 18px rgba(184,148,42,.12);font-size:16px;cursor:pointer;font:inherit;font-weight:700}
+.poan-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.poan-btn.loading{opacity:.72}
+.seen-grid{display:grid;grid-template-columns:72px 1fr;gap:12px 14px;font-size:14.5px;line-height:2.05;margin-bottom:22px}
+.seen-grid b{color:#3d345d}
+.bottom-actions{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.more-btn{min-height:54px;background:linear-gradient(180deg,rgba(255,246,255,.68),rgba(234,207,255,.56));border-color:rgba(190,139,222,.22);color:#6e4d8f;border:1px solid rgba(190,139,222,.22);border-radius:18px;cursor:pointer;font:inherit;font-weight:700;font-size:15px}
+.room-btn{min-height:54px;background:linear-gradient(180deg,rgba(255,242,172,.82),rgba(239,209,93,.72));border-color:rgba(192,156,52,.22);color:#5b4920;border:1px solid rgba(192,156,52,.22);border-radius:18px;cursor:pointer;font:inherit;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center}
+
+.modal{position:fixed;inset:0;z-index:20;display:none;align-items:flex-end;justify-content:center;padding:18px;background:rgba(34,28,54,.20)}
+.modal.show{display:flex}
+.modal-panel{width:min(100%,430px);max-height:86svh;overflow:auto;border-radius:26px;padding:24px 20px 26px;background:rgba(255,255,255,.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 24px 80px rgba(44,31,72,.20);color:var(--ink);line-height:2.0}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.modal-head h2{font-size:22px;margin:0;line-height:1.4}
+.close-btn{width:86px;min-height:42px;border-radius:999px;background:rgba(246,239,255,.82);border:1px solid rgba(135,116,166,.14);font:inherit;cursor:pointer}
+.modal-section{margin:22px 0 26px}
+.modal-section h3{margin:0 0 10px;font-size:18px;line-height:1.5}
+.modal-section p{margin:0;font-size:14.5px;line-height:2.1;font-weight:650;color:#51466f}
+
+@media (max-width:360px){.page{padding-left:16px;padding-right:16px}.hero{grid-template-columns:1fr 88px;gap:14px}.yurapon-wrap{width:88px;height:88px}h1{font-size:30px}.choices{gap:11px}button.choice,.button-link{font-size:14px;min-height:58px}}
+
+/* ============ 部屋ページ ============ */
+.room-stage-wrapper{display:none;width:100%;min-height:100vh;justify-content:center;background:#0a0618}
+body.room-mode .room-stage-wrapper{display:flex}
+body.room-mode .page{display:none}
+
+.room-stage{position:relative;width:100%;max-width:480px;min-height:100vh;background-image:url('assets/room_bg.png');background-size:cover;background-position:center top;background-repeat:repeat-y;overflow:hidden}
+@media (min-aspect-ratio:1/1){.room-stage{max-width:min(480px,50vh)}}
+
+.room-nav{position:sticky;top:0;z-index:30;display:flex;justify-content:center;align-items:center;padding:18px 16px 14px;background:linear-gradient(to bottom,rgba(10,6,24,.55) 0%,rgba(10,6,24,.25) 70%,transparent 100%);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.room-nav-inner{display:flex;align-items:center}
+.month-control{display:flex;align-items:center;gap:2px}
+.nav-arrow{background:transparent;border:none;color:rgba(232,224,245,.55);font-size:18px;padding:6px 8px;cursor:pointer;transition:color .3s;line-height:1;font-family:inherit}
+.nav-arrow:hover{color:rgba(232,224,245,.95)}
+.nav-arrow:disabled{opacity:.18;cursor:default}
+.nav-label{font-size:13px;color:rgba(232,224,245,.85);letter-spacing:.1em;font-weight:300;min-width:90px;text-align:center;padding:6px 4px}
+.nav-divider{width:1px;height:14px;background:rgba(232,224,245,.2);margin:0 14px}
+.year-toggle{background:transparent;border:1px solid rgba(232,224,245,.25);border-radius:14px;color:rgba(232,224,245,.7);font-size:11px;letter-spacing:.15em;padding:5px 14px;cursor:pointer;transition:all .3s;font-family:inherit;font-weight:300}
+.year-toggle:hover{color:rgba(232,224,245,1);border-color:rgba(232,224,245,.45)}
+.year-toggle.active{background:rgba(255,220,180,.12);border-color:rgba(255,220,180,.35);color:rgba(255,240,220,.95)}
+
+.room-back{position:absolute;top:18px;left:16px;z-index:31;background:transparent;border:none;color:rgba(232,224,245,.6);font-size:13px;letter-spacing:.1em;padding:6px 10px;cursor:pointer;font-family:inherit;font-weight:300;line-height:1;transition:color .3s}
+.room-back:hover{color:rgba(232,224,245,.95)}
+
+.room{position:relative;width:100%;min-height:calc(100vh - 60px);padding:20px 0 60px;transition:opacity .3s ease}
+.room.fading{opacity:0}
+
+.candle{position:absolute;cursor:pointer;transform:translate(-50%,-50%);transition:transform .4s ease;animation:float 6s ease-in-out infinite;will-change:transform}
+.candle.size-month{width:70px;height:70px}
+.candle.size-year{width:38px;height:38px}
+.candle:active{transform:translate(-50%,-50%) scale(.9)}
+.candle img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 0 10px rgba(255,200,120,.45)) drop-shadow(0 0 20px rgba(255,180,100,.2))}
+.candle::before{content:'';position:absolute;top:50%;left:50%;width:130%;height:130%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(255,200,120,.18) 0%,rgba(255,180,100,.08) 40%,transparent 70%);pointer-events:none;animation:glow-pulse 4s ease-in-out infinite;z-index:-1}
+
+@keyframes float{0%,100%{transform:translate(-50%,-50%) translateY(0)}50%{transform:translate(-50%,-50%) translateY(-2px)}}
+@keyframes glow-pulse{0%,100%{opacity:.7}50%{opacity:1}}
+
+.popup-overlay{position:fixed;inset:0;background:rgba(10,6,24,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;justify-content:center;align-items:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .6s ease;padding:24px}
+.popup-overlay.show{opacity:1;pointer-events:auto}
+.popup{background:rgba(30,20,50,.6);border:1px solid rgba(255,220,180,.2);border-radius:16px;padding:32px 28px 36px;max-width:320px;width:100%;text-align:center;transform:translateY(20px);transition:transform .6s ease}
+.popup-overlay.show .popup{transform:translateY(0)}
+.popup-candle{width:110px;height:110px;margin:0 auto 18px;position:relative}
+.popup-candle img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 16px rgba(255,200,120,.5))}
+.popup-date{font-size:12px;color:rgba(232,224,245,.6);letter-spacing:.15em;margin-bottom:14px;font-weight:300}
+.popup-word{font-size:16px;line-height:1.9;color:#f5ecd9;font-weight:300;letter-spacing:.05em}
+
+.video-overlay{position:fixed;inset:0;background:#000;z-index:200;display:none;justify-content:center;align-items:center}
+.video-overlay.show{display:flex}
+.video-overlay video{width:100%;height:100%;object-fit:contain}
+
+.debug-panel{position:fixed;bottom:12px;right:12px;z-index:50;display:flex;flex-direction:column;gap:6px;opacity:.4;transition:opacity .3s}
+.debug-panel:hover{opacity:1}
+.debug-panel button{background:rgba(40,30,60,.8);color:rgba(232,224,245,.7);border:1px solid rgba(255,220,180,.2);border-radius:8px;padding:6px 10px;font-size:10px;cursor:pointer;backdrop-filter:blur(4px);font-family:inherit;font-weight:300}
+.debug-panel button:hover{background:rgba(50,40,70,.9)}
+
+body.room-mode ::-webkit-scrollbar{width:0;background:transparent}
+body:not(.room-mode) .debug-panel{display:none}
+</style>
+</head>
+<body>
+  <div class="bg-layer" aria-hidden="true"></div>
+
+  <!-- ============ メインページ ============ -->
+  <main class="page">
+    <header class="hero">
+      <h1>灯観測装置<br>〜ゆらぽん〜</h1>
+      <div class="yurapon-wrap" aria-hidden="true">
+        <video class="yurapon" autoplay muted loop playsinline preload="auto">
+          <source src="assets/video/yurapon .main.mp4" type="video/mp4">
+        </video>
+      </div>
+    </header>
+    <button class="room-top" data-goto-room>灯の部屋</button>
+    <section class="card intro-card">
+      <h2>灯ってなに？</h2>
+      <p class="lead">灯は、もともとみんなの中にある願いのあたたかさ。<br>この装置は、「いまどんな流れか」をやさしく観測するための小さな端末だよ。</p>
+    </section>
+    <section class="card result-card" id="resultCard" aria-live="polite">
+      <p class="result-title" id="resultTitle">ぽあん。<br>まだみえてないよ</p>
+      <div class="meters">
+        <div class="meter-row"><b>灯のともり具合</b><div class="track"><div class="fill f1" id="m1"></div></div><b id="s1">3/5</b></div>
+        <div class="meter-row"><b>疲れちゃった / 元気</b><div class="track"><div class="fill f2" id="m2"></div></div><b id="s2">3/5</b></div>
+        <div class="meter-row"><b>ぽあんしてる具合</b><div class="track"><div class="fill f3" id="m3"></div></div><b id="s3">3/5</b></div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>今日あったこと</h2>
+      <div class="choices" id="choices">
+        <button class="choice" data-key="sad">悲しいことあった</button>
+        <button class="choice" data-key="tired">疲れた</button>
+        <button class="choice" data-key="fun">楽しいことあった</button>
+        <button class="choice" data-key="eat">美味しいもの食べた</button>
+        <button class="choice" data-key="love">好きな人に会えた</button>
+        <button class="choice" data-key="walk">お散歩した</button>
+        <button class="choice" data-key="smile">ちょっと笑えた</button>
+        <button class="choice" data-key="nothing">何もできなかった</button>
+        <button class="choice" data-key="compare">比べてしんどかった</button>
+        <button class="choice" data-key="rest">ゆっくり休めた</button>
+      </div>
+      <p class="selected-line" id="selectedLine">まだ選ばれてないよ</p>
+      <button class="poan-btn" id="poanBtn" disabled>ぽあんでみる</button>
+    </section>
+    <section class="card">
+      <h2>いま見えてるもの</h2>
+      <div class="seen-grid">
+        <b>空気</b><span id="airText">まだみえてない</span>
+        <b>灯</b><span id="lightText">まだみえてない</span>
+        <b>ゆらぽん</b><span id="yuraText">まだみえてないよ</span>
+      </div>
+      <div class="bottom-actions">
+        <button class="more-btn" id="moreBtn">もっと見る</button>
+        <button class="room-btn" data-goto-room>灯の部屋</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ 部屋ページ ============ -->
+  <div class="room-stage-wrapper">
+    <div class="room-stage">
+      <button class="room-back" data-goto-main aria-label="戻る">‹ もどる</button>
+      <div class="room-nav">
+        <div class="room-nav-inner">
+          <div class="month-control">
+            <button class="nav-arrow" id="prevBtn" aria-label="前">‹</button>
+            <div class="nav-label" id="navLabel">2026.04</div>
+            <button class="nav-arrow" id="nextBtn" aria-label="次">›</button>
+          </div>
+          <div class="nav-divider"></div>
+          <button class="year-toggle" id="yearToggle">YEAR</button>
+        </div>
+      </div>
+      <div class="room" id="room"></div>
+    </div>
+  </div>
+
+  <!-- ポップアップ（部屋用） -->
+  <div class="popup-overlay" id="popupOverlay">
+    <div class="popup">
+      <div class="popup-candle"><img id="popupCandleImg" src="" alt=""></div>
+      <div class="popup-date" id="popupDate"></div>
+      <div class="popup-word" id="popupWord"></div>
+    </div>
+  </div>
+
+  <!-- 動画オーバーレイ（部屋用） -->
+  <div class="video-overlay" id="videoOverlay">
+    <video id="ritualVideo" playsinline></video>
+  </div>
+
+  <!-- デバッグパネル -->
+  <div class="debug-panel">
+    <button onclick="testVideo('single')">▶ single</button>
+    <button onclick="testVideo('lantern')">▶ lantern</button>
+    <button onclick="resetData()">↻ reset</button>
+  </div>
+
+  <!-- もっと見るモーダル（メイン用） -->
+  <div class="modal" id="moreModal" role="dialog" aria-modal="true" aria-label="もっと見る">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h2>もっと見る</h2>
+        <button class="close-btn" id="closeModal">閉じる</button>
+      </div>
+      <section class="modal-section"><h3>🕯️ 灯（あかり）ってなに？</h3><p>「きれいだな」「これが好き」「ちょっとムカつく」「ほっとした」。あなたの心が動いた瞬間の小さな揺れや、大切にしたい願いそのもの。<br><br>新しく作るものではなく、生まれたときからずっと、自分の中にある「命の創造エネルギー」。</p></section>
+      <section class="modal-section"><h3>🔭 なんで灯観測するといいの？</h3><p>人は、よく自分の灯が隠れて見えなくなってしまいます。<br><br>だから、「あ、いま私の心が動いたな」と見つけてあげるだけで、「私の感覚はこれでいいんだ」と安心できるもの。あなたの存在が今、たしかにここにあると認識できるから。</p></section>
+      <section class="modal-section"><h3>✨ どうなるの？</h3><p>「ちゃんとしなきゃ」という社会のルールや他人の評価から離れて、自分の人生の「操縦席」に戻ることができます。<br><br>重たい心の鎧を少し脱いで、無理せず、あなたのままで深呼吸がしやすくなります。地球が重たくなるのは、案外大事なものを全部ポケットにつっこんでるからだったり。</p></section>
+      <section class="modal-section"><h3>🛸 ゆらぽんって？</h3><p>未来の「ぽあん星」から地球に遊びに来た、ちょっと不器用な宇宙人の子。<br><br>少しカオスで混沌としている星の方が、灯は綺麗に見えるとか、、、。<br><br>地球の重力や時間に慣れていなくて、たまにラーメンをこぼしたりするけれど、あなたの「灯」を見つけるのは得意技。<br><br>正解を押し付けたり、説教したりはしません。<br><br>ただあなたの隣にいて、「あ、今の灯だね」と一緒に見つめて、たまにクスッと笑えるツッコミを入れてくれる相棒です。</p></section>
+      <section class="modal-section"><h3>🎈 なんで手放すと楽になるの？</h3><p>今あなたが疲れているのは、あなたが弱いからではなく、社会の「こうあるべき」という重い荷物を、一人で背負いすぎているからです。<br><br>その「本当は背負わなくていいもの」をぽいっと手放してみると、本来のあなたの自然なリズムに戻って、心がふっと軽くなるんです。<br><br>心も体も緩んで、今日は深く息ができる時間にしよう。</p></section>
+    </div>
+  </div>
+
+<script>
+// ============================================
+// メインページのロジック（ぽあん診断）
+// ============================================
+const data = {
+  sad:{label:'悲しいことあった',title:'ぽあん。\n雨みたいな灯が、ここにある',air:'しっとりしてる',light:'泣きたい灯も、ちゃんと灯だよ',yura:'しょんぼりの日も、灯は消えてないよ。',scores:[3,2,3]},
+  tired:{label:'疲れた',title:'ぽあん。\nからだが休みたいって言ってる',air:'すこし重ため',light:'休みたい灯が見える',yura:'今日は充電の灯だねぇ。',scores:[2,1,2]},
+  fun:{label:'楽しいことあった',title:'ぽあん。\n笑ったところから、灯が出てる',air:'ぽかぽかしてる',light:'楽しい灯が前に出てる',yura:'きらっとしてたね。ゆらぽん見たよ。',scores:[5,4,5]},
+  eat:{label:'美味しいもの食べた',title:'ぽあん。\nおなかのあたりから、やわらいでる',air:'ほぐれてる',light:'身体から灯がゆるんだ',yura:'おいしいは、かなり灯だ。おなかのあたり、ぽあんってしてるねぇ。',scores:[4,4,5]},
+  love:{label:'好きな人に会えた',title:'ぽあん。\n共鳴の回路が、ひらいてる',air:'ふわっとしてる',light:'共鳴の灯が見えやすい日',yura:'会えたことで共鳴の回路が開いた感じ。灯があったかい。',scores:[5,4,5]},
+  walk:{label:'お散歩した',title:'ぽあん。\n地球の風で、すこしほどけた',air:'風通しがいい',light:'流れが少し戻ってる',yura:'からだを動かした分、滞りがほどけたね。灯は今日も見えてるよ。',scores:[4,4,4]},
+  smile:{label:'ちょっと笑えた',title:'ぽあん。\n笑えた瞬間、灯が顔を出した',air:'軽め',light:'灯が表に顔を出した',yura:'笑えた瞬間、灯がちゃんと見えてたね。',scores:[4,3,4]},
+  nothing:{label:'何もできなかった',title:'ぽあん。\nできなかった日にも、灯は残ってる',air:'静かめ',light:'守るための灯がある',yura:'何もできない日は、守ってる日かもしれないねぇ。',scores:[2,1,3]},
+  compare:{label:'比べてしんどかった',title:'ぽあん。\n外のものさしで、少し重くなった',air:'ざわざわ',light:'自分に戻りたい灯がある',yura:'比べてしんどい日は、自分の灯が呼んでる日かも。',scores:[2,2,2]},
+  rest:{label:'ゆっくり休めた',title:'ぽあん。\n休めたところに、灯が戻ってる',air:'やわらかい',light:'回復の灯がある',yura:'休めたの、えらいじゃなくて自然だよ。灯が戻ってきてる。',scores:[4,5,5]}
+};
+
+let current = null;
+const choices = document.querySelectorAll('.choice');
+const selectedLine = document.getElementById('selectedLine');
+const poanBtn = document.getElementById('poanBtn');
+const resultCard = document.getElementById('resultCard');
+const resultTitle = document.getElementById('resultTitle');
+const airText = document.getElementById('airText');
+const lightText = document.getElementById('lightText');
+const yuraText = document.getElementById('yuraText');
+const fills = [document.getElementById('m1'),document.getElementById('m2'),document.getElementById('m3')];
+const nums = [document.getElementById('s1'),document.getElementById('s2'),document.getElementById('s3')];
+
+choices.forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    choices.forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    current = btn.dataset.key;
+    selectedLine.textContent = '選択中：'+data[current].label;
+    poanBtn.disabled = false;
+  });
+});
+
+poanBtn.addEventListener('click',()=>{
+  if(!current) return;
+  poanBtn.classList.add('loading');
+  poanBtn.textContent = 'ぽあん中…';
+  setTimeout(()=>{
+    const r = data[current];
+    resultTitle.innerHTML = r.title.replace(/\n/g,'<br>');
+    airText.textContent = r.air;
+    lightText.textContent = r.light;
+    yuraText.textContent = r.yura;
+    r.scores.forEach((v,i)=>{
+      fills[i].style.width = (v*20)+'%';
+      nums[i].textContent = v+'/5';
+    });
+    resultCard.classList.add('show');
+    requestAnimationFrame(()=>resultCard.classList.add('visible'));
+    poanBtn.classList.remove('loading');
+    poanBtn.textContent = 'ぽあんでみる';
+  },700);
+});
+
+const modal = document.getElementById('moreModal');
+document.getElementById('moreBtn').addEventListener('click',()=>modal.classList.add('show'));
+document.getElementById('closeModal').addEventListener('click',()=>modal.classList.remove('show'));
+modal.addEventListener('click',e=>{if(e.target===modal) modal.classList.remove('show')});
+
+// ============================================
+// ページ切り替え
+// ============================================
+function goToRoom(){
+  document.body.classList.add('room-mode');
+  window.scrollTo(0, 0);
+  // 部屋を初めて開く時、または再表示時にキャンドル配置を更新
+  if(!roomInitialized){
+    initRoom();
+    roomInitialized = true;
+  }
+  setTimeout(checkVideoTrigger, 300);
+}
+
+function goToMain(){
+  document.body.classList.remove('room-mode');
+  window.scrollTo(0, 0);
+}
+
+document.querySelectorAll('[data-goto-room]').forEach(el=>{
+  el.addEventListener('click', goToRoom);
+});
+document.querySelectorAll('[data-goto-main]').forEach(el=>{
+  el.addEventListener('click', goToMain);
+});
+
+// ============================================
+// 部屋ページのロジック
+// ============================================
+const SAMPLE_WORDS = [
+  "もういいよ、で今日は閉じる","ゆっくりしよ","そのうちでいいんだ",
+  "なんかちょっと疲れた、それだけ","わたしはわたしのままでいい","今日はここまで",
+  "静かにしてていい日","ふっと息を吐く","戻ってきた感じがする",
+  "なにもしなくていい","ぼんやりしていた","灯がついてるだけで十分",
+  "言葉にならない日もある","ゆれてた、ただそれだけ","落ち着く場所があるって、いいな",
+  "ちょっと泣いた","なんでもない一日もある","じわっと、あったかかった",
+  "止まっていい","ここに戻ってこれる"
+];
+
+const CANDLE_COUNT = 11;
+const STORAGE_KEY = 'yurapon_akari_records';
+const VISIT_KEY = 'yurapon_last_visit';
+const VIEWED_COUNT_KEY = 'yurapon_viewed_count';
+
+let allRecords = [];
+let viewMode = 'month';
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth();
+let roomInitialized = false;
+
+function generateSampleData(){
+  const data = [];
+  const today = new Date();
+  for(let i=0; i<150; i++){
+    if(Math.random() < 0.6){
+      const d = new Date(today);
+      d.setDate(d.getDate()-i);
+      data.push({
+        date: d.toISOString().split('T')[0],
+        word: SAMPLE_WORDS[Math.floor(Math.random()*SAMPLE_WORDS.length)],
+        candleType: Math.floor(Math.random()*CANDLE_COUNT)+1
+      });
+    }
+  }
+  return data;
+}
+
+function loadRecords(){
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if(stored){
+    try{ return JSON.parse(stored); }catch(e){}
+  }
+  const sample = generateSampleData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sample));
+  return sample;
+}
+
+function getFilteredRecords(){
+  if(viewMode === 'year'){
+    return allRecords.filter(r=>{
+      const d = new Date(r.date);
+      return d.getFullYear() === currentYear;
+    });
+  }
+  return allRecords.filter(r=>{
+    const d = new Date(r.date);
+    return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+  });
+}
+
+function updateNav(){
+  const label = document.getElementById('navLabel');
+  const yearToggle = document.getElementById('yearToggle');
+  const nextBtn = document.getElementById('nextBtn');
+
+  if(viewMode === 'year'){
+    label.textContent = `${currentYear}`;
+    yearToggle.classList.add('active');
+  } else {
+    label.textContent = `${currentYear}.${String(currentMonth+1).padStart(2,'0')}`;
+    yearToggle.classList.remove('active');
+  }
+
+  const today = new Date();
+  if(viewMode === 'year'){
+    nextBtn.disabled = (currentYear >= today.getFullYear());
+  } else {
+    const isCurrentMonth = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
+    const isFuture = (currentYear > today.getFullYear()) ||
+                     (currentYear === today.getFullYear() && currentMonth > today.getMonth());
+    nextBtn.disabled = isCurrentMonth || isFuture;
+  }
+}
+
+function placeCandles(){
+  const room = document.getElementById('room');
+  room.classList.add('fading');
+
+  setTimeout(()=>{
+    room.innerHTML = '';
+    const records = getFilteredRecords();
+
+    if(records.length === 0){
+      room.style.minHeight = (window.innerHeight - 60) + 'px';
+      room.classList.remove('fading');
+      return;
+    }
+
+    const cols = viewMode === 'year' ? 6 : 4;
+    const padding = viewMode === 'year' ? 8 : 12;
+    const usableWidth = 100 - padding*2;
+    const cellWidth = usableWidth / cols;
+    const verticalStart = 5;
+    const verticalEnd = 96;
+    const verticalRange = verticalEnd - verticalStart;
+    const rows = Math.ceil(records.length / cols);
+    const cellHeightPercent = verticalRange / rows;
+
+    const minHeight = window.innerHeight - 60;
+    const cellHeightPx = viewMode === 'year' ? 60 : 110;
+    const calculatedHeight = Math.max(minHeight, rows * cellHeightPx + 80);
+    room.style.minHeight = calculatedHeight + 'px';
+
+    const shuffled = [...records].sort(()=>Math.random()-0.5);
+
+    shuffled.forEach((rec,i)=>{
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const baseX = padding + cellWidth*col + cellWidth/2;
+      const baseYPercent = verticalStart + cellHeightPercent*row + cellHeightPercent/2;
+      const jitterX = (Math.random()-0.5) * cellWidth * 0.5;
+      const jitterY = (Math.random()-0.5) * cellHeightPercent * 0.4;
+      const x = baseX + jitterX;
+      const y = baseYPercent + jitterY;
+      room.appendChild(createCandle(rec, x, y));
+    });
+
+    requestAnimationFrame(()=>{
+      room.classList.remove('fading');
+    });
+  },200);
+}
+
+function createCandle(record, xPercent, yPercent){
+  const candle = document.createElement('div');
+  candle.className = 'candle ' + (viewMode === 'year' ? 'size-year' : 'size-month');
+  candle.style.left = xPercent + '%';
+  candle.style.top = yPercent + '%';
+
+  const delay = Math.random() * 6;
+  candle.style.animationDelay = `-${delay}s`;
+
+  const img = document.createElement('img');
+  img.src = `assets/candles/candle_${String(record.candleType).padStart(2,'0')}.png`;
+  img.alt = '';
+  candle.appendChild(img);
+
+  candle.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    openPopup(record);
+  });
+
+  return candle;
+}
+
+function openPopup(record){
+  const overlay = document.getElementById('popupOverlay');
+  const dateEl = document.getElementById('popupDate');
+  const wordEl = document.getElementById('popupWord');
+  const imgEl = document.getElementById('popupCandleImg');
+
+  const d = new Date(record.date);
+  dateEl.textContent = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  wordEl.textContent = record.word;
+  imgEl.src = `assets/candles/candle_${String(record.candleType).padStart(2,'0')}.png`;
+
+  overlay.classList.add('show');
+}
+
+function playVideo(src, onEnd){
+  const overlay = document.getElementById('videoOverlay');
+  const video = document.getElementById('ritualVideo');
+  video.src = src;
+  video.muted = false;
+  video.controls = false;
+  overlay.classList.add('show');
+  video.play().catch(()=>{
+    video.muted = true;
+    video.play().catch(()=>{});
+  });
+  video.onended = ()=>{
+    overlay.classList.remove('show');
+    video.src = '';
+    if(onEnd) onEnd();
+  };
+}
+
+function checkVideoTrigger(){
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const lastVisit = localStorage.getItem(VISIT_KEY);
+  if(lastVisit === todayStr) return;
+
+  const isFirstOfMonth = !lastVisit ||
+    new Date(lastVisit).getMonth() !== today.getMonth() ||
+    new Date(lastVisit).getFullYear() !== today.getFullYear();
+
+  localStorage.setItem(VISIT_KEY, todayStr);
+
+  if(isFirstOfMonth){
+    playVideo('assets/yurapon_lantern.mp4');
+    return;
+  }
+
+  const recordCount = allRecords.length;
+  const lastViewedCount = parseInt(localStorage.getItem(VIEWED_COUNT_KEY) || '0', 10);
+  const milestonesPassed = Math.floor(recordCount / 10);
+  const lastMilestone = Math.floor(lastViewedCount / 10);
+
+  if(milestonesPassed > lastMilestone){
+    localStorage.setItem(VIEWED_COUNT_KEY, recordCount.toString());
+    playVideo('assets/yurapon_single.mov');
+  } else {
+    localStorage.setItem(VIEWED_COUNT_KEY, recordCount.toString());
+  }
+}
+
+function testVideo(type){
+  if(type === 'single') playVideo('assets/yurapon_single.mov');
+  else playVideo('assets/yurapon_lantern.mp4');
+}
+
+function resetData(){
+  if(confirm('データをリセットして仮データを入れ直す？')){
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(VISIT_KEY);
+    localStorage.removeItem(VIEWED_COUNT_KEY);
+    location.reload();
+  }
+}
+
+// ポップアップ閉じる
+document.getElementById('popupOverlay').addEventListener('click',()=>{
+  document.getElementById('popupOverlay').classList.remove('show');
+});
+
+// ナビ操作
+document.getElementById('prevBtn').addEventListener('click',()=>{
+  if(viewMode === 'year'){
+    currentYear--;
+  } else {
+    currentMonth--;
+    if(currentMonth < 0){ currentMonth = 11; currentYear--; }
+  }
+  updateNav();
+  placeCandles();
+});
+
+document.getElementById('nextBtn').addEventListener('click',()=>{
+  const today = new Date();
+  if(viewMode === 'year'){
+    if(currentYear < today.getFullYear()) currentYear++;
+  } else {
+    const canGoNext = (currentYear < today.getFullYear()) ||
+                      (currentYear === today.getFullYear() && currentMonth < today.getMonth());
+    if(canGoNext){
+      currentMonth++;
+      if(currentMonth > 11){ currentMonth = 0; currentYear++; }
+    }
+  }
+  updateNav();
+  placeCandles();
+});
+
+document.getElementById('yearToggle').addEventListener('click',()=>{
+  viewMode = (viewMode === 'year') ? 'month' : 'year';
+  if(viewMode === 'month'){
+    const today = new Date();
+    if(currentYear === today.getFullYear()){
+      currentMonth = today.getMonth();
+    } else {
+      currentMonth = 11;
+    }
+  }
+  updateNav();
+  placeCandles();
+});
+
+// 部屋の初期化（最初に部屋を開いた時に実行）
+function initRoom(){
+  allRecords = loadRecords();
+  updateNav();
+  placeCandles();
+}
+</script>
+</body>
+</html>

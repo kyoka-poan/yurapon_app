@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>灯観測装置〜ゆらぽん〜</title>
+<style>
+:root{
+  --ink:#5a5278;--ink-strong:#443a68;--line:rgba(226,218,239,.72);
+  --card:rgba(255,255,255,.32);--shadow:0 10px 24px rgba(92,80,128,.08);
+  --phone-w:430px;--ui-w:344px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;min-height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  color:var(--ink);
+  background:radial-gradient(circle at 50% 18%,rgba(255,255,255,.18),transparent 35%),url("background.jpeg") center top / auto 100dvh no-repeat fixed,linear-gradient(120deg,#edf9f5,#f5edff);
+  overflow-x:hidden;touch-action:manipulation;
+}
+.app{position:relative;width:min(100vw,var(--phone-w));min-height:100dvh;margin:0 auto;overflow:hidden;background:transparent;box-shadow:0 0 0 1px rgba(255,255,255,.28),0 20px 60px rgba(78,68,112,.08);}
+.app::before{content:"";position:fixed;top:0;bottom:0;left:50%;width:min(100vw,var(--phone-w));transform:translateX(-50%);z-index:0;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02)),url("background.jpeg") center top / cover no-repeat;pointer-events:none;}
+.app::after{content:"";position:absolute;inset:0;z-index:1;background:radial-gradient(circle at 50% 34%,rgba(255,255,255,.16),transparent 30%),linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.07));pointer-events:none;}
+.content{position:relative;z-index:3;width:min(var(--ui-w),82vw);margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 0 calc(120px + env(safe-area-inset-bottom));}
+.title{margin:4px 0 12px;color:var(--ink-strong);font-size:clamp(1.54rem,6.8vw,1.9rem);line-height:1.05;font-weight:900;letter-spacing:-.055em;text-shadow:0 2px 16px rgba(255,255,255,.78);}
+.top-row{display:flex;gap:10px;margin:0 0 12px;}
+.top-link{flex:1;display:flex;align-items:center;justify-content:center;min-height:46px;padding:10px 14px;border-radius:16px;border:1px solid rgba(215,198,246,.76);background:rgba(238,225,255,.42);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--ink-strong);font-weight:900;text-decoration:none;box-shadow:0 10px 22px rgba(128,96,180,.08);}
+.stack{display:grid;gap:12px;}
+.card{border:1px solid var(--line);background:var(--card);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:var(--shadow);border-radius:22px;padding:16px 15px;}
+.card h2,.card h3{margin:0 0 12px;color:var(--ink-strong);font-size:1.06rem;line-height:1.25;font-weight:900;}
+.card p{margin:0;line-height:1.75;font-size:.82rem;font-weight:650;}
+.summary-card{transition:opacity .28s ease,transform .28s ease;}.summary-card.waiting{opacity:.72;transform:translateY(4px);}
+.headline{white-space:pre-line;margin:0 0 16px;color:var(--ink-strong);font-weight:900;font-size:.92rem;line-height:1.48;}
+.meters{display:grid;gap:12px;}.meter-row{display:grid;grid-template-columns:92px 1fr 32px;gap:8px;align-items:center;font-size:.72rem;font-weight:900;}.meter-track{height:10px;border-radius:999px;background:rgba(231,226,239,.88);overflow:hidden;}.meter-fill{height:100%;width:60%;border-radius:999px;transition:width .62s cubic-bezier(.22,.61,.36,1);}.fill-light{background:linear-gradient(90deg,#aee9d8,#d0c0ff);}.fill-energy{background:linear-gradient(90deg,#f4d0a8,#efb3dc);}.fill-poan{background:linear-gradient(90deg,#f1dfaf,#eab7ef);}
+.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}.event-btn{appearance:none;border:1px solid rgba(232,226,239,.98);background:rgba(255,255,255,.56);color:var(--ink-strong);min-height:46px;padding:9px 7px;border-radius:14px;font-size:.78rem;font-weight:900;cursor:pointer;transition:transform .16s ease,background .16s ease,box-shadow .16s ease;touch-action:manipulation;}.event-btn:active{transform:scale(.985);}.event-btn.selected{background:rgba(238,226,255,.86);border-color:#d2bdf1;box-shadow:0 8px 18px rgba(128,96,180,.10);}
+.selected-line{margin:10px 2px 14px;min-height:1.5em;color:#756a95;font-size:.78rem;font-weight:900;}.main-action{appearance:none;width:100%;min-height:48px;border:none;border-radius:18px;background:linear-gradient(180deg,#fff4bd,#f0dd89);color:#66501f;font-size:.94rem;font-weight:900;cursor:pointer;box-shadow:0 10px 22px rgba(185,152,58,.13),inset 0 1px 0 rgba(255,255,255,.72);transition:opacity .18s ease,transform .18s ease;touch-action:manipulation;}.main-action:disabled{opacity:.52;cursor:not-allowed;}.main-action:not(:disabled):active{transform:scale(.99);}
+.sub-grid{display:grid;grid-template-columns:62px 1fr;gap:10px 12px;line-height:1.8;font-size:.82rem;}.sub-grid b{color:var(--ink-strong);font-weight:900;}.result-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;}.more-btn,.room-btn{width:100%;min-height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:.88rem;font-weight:900;text-decoration:none;cursor:pointer;touch-action:manipulation;}.more-btn{border:1px solid #d5bef1;background:linear-gradient(180deg,rgba(250,239,255,.88),rgba(233,212,255,.82));color:#634c84;box-shadow:0 8px 18px rgba(141,111,190,.12);}.room-btn{border:1px solid #ead79d;background:linear-gradient(180deg,rgba(255,245,188,.90),rgba(239,216,119,.88));color:#66501f;box-shadow:0 8px 18px rgba(185,152,58,.12);}
+.yurapon-float{position:fixed;left:calc((100vw - min(100vw,var(--phone-w)))/2 + min(var(--phone-w),100vw) - 92px);top:calc(12px + env(safe-area-inset-top));width:76px;height:76px;z-index:2;pointer-events:none;overflow:hidden;border-radius:42% 46% 40% 44%;background:radial-gradient(circle at 50% 55%,rgba(218,222,226,.70),rgba(218,222,226,.42) 54%,rgba(218,222,226,0) 82%);box-shadow:0 8px 20px rgba(95,88,118,.10);-webkit-mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,.86) 75%,transparent 92%);mask-image:radial-gradient(ellipse at center,#000 60%,rgba(0,0,0,.86) 75%,transparent 92%);}.yurapon-float::before{content:"";position:absolute;inset:-12px;background:rgba(215,221,226,.28);filter:blur(15px);}.yurapon-float video{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;display:block;filter:saturate(1.04) brightness(1.06) contrast(.98);opacity:1;pointer-events:none;}video{pointer-events:none;}
+.modal{position:fixed;inset:0;z-index:50;display:none;align-items:flex-end;justify-content:center;padding:14px;background:rgba(38,32,57,.32);}.modal.show{display:flex;}.modal-panel{width:min(100%,430px);max-height:84dvh;overflow:auto;border-radius:26px 26px 18px 18px;border:1px solid rgba(232,226,239,.9);background:rgba(255,255,255,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:22px 20px calc(22px + env(safe-area-inset-bottom));box-shadow:0 28px 80px rgba(60,45,95,.20);}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:10px;}.modal-head h2{margin:0;color:var(--ink-strong);font-size:1.55rem;font-weight:900;}.close-btn{border:1px solid var(--line);background:white;border-radius:999px;padding:11px 17px;font-weight:900;color:#766a95;cursor:pointer;}.modal-section{margin:20px 0 22px;}.modal-section h3{margin:0 0 10px;color:var(--ink-strong);font-size:1.12rem;}.modal-section p{margin:0 0 10px;line-height:1.9;font-size:.96rem;font-weight:560;}
+@media (min-width:721px){body{padding:18px 0;background-size:auto calc(100dvh - 36px);}.app{border-radius:28px;min-height:calc(100dvh - 36px);}.app::before{top:18px;bottom:18px;border-radius:28px;}.content{padding-top:20px;}.title{font-size:1.9rem;}}
+@media (max-width:360px){.content{width:86vw;}.meter-row{grid-template-columns:84px 1fr 30px;font-size:.72rem;}.event-btn{font-size:.74rem;}.yurapon-float{width:68px;height:68px;left:calc((100vw - min(100vw,var(--phone-w)))/2 + min(var(--phone-w),100vw) - 82px);}}
+</style>
+</head>
+<body>
+<div class="app" id="app"><div class="content">
+<h1 class="title">灯観測装置〜ゆらぽん〜</h1>
+<div class="top-row"><a class="top-link" href="room.html">灯の部屋</a></div>
+<section class="stack">
+<div class="card"><h2>灯ってなに？</h2><p>灯は、もともとみんなの中にある願いのあたたかさ。<br>この装置は、「いまどんな流れか」をやさしく観測するための小さい端末だよ。</p></div>
+<div class="card summary-card" id="summaryCard"><div class="headline" id="headline">ぽあん。
+まだみえてないよ</div><div class="meters"><div class="meter-row"><div>灯のともり具合</div><div class="meter-track"><div class="meter-fill fill-light" id="lightFill"></div></div><div id="lightValue">3/5</div></div><div class="meter-row"><div>疲れちゃった / 元気</div><div class="meter-track"><div class="meter-fill fill-energy" id="energyFill"></div></div><div id="energyValue">3/5</div></div><div class="meter-row"><div>ぽあんしてる具合</div><div class="meter-track"><div class="meter-fill fill-poan" id="poanFill"></div></div><div id="poanValue">3/5</div></div></div></div>
+<div class="card"><h3>今日あったこと</h3><div class="button-grid" id="eventGrid"></div><div class="selected-line" id="selectedLine">まだ選ばれてないよ</div><button class="main-action" id="poanBtn" disabled>ぽあんでみる</button></div>
+<div class="card"><h3>いま見えてるもの</h3><div class="sub-grid"><b>空気</b><span id="resultAir">まだみえてない</span><b>灯</b><span id="resultLight">まだみえてない</span><b>ゆらぽん</b><span id="resultMessage">まだみえてないよ</span></div><div class="result-actions"><button class="more-btn" id="moreBtn">もっと見る</button><a class="room-btn" href="room.html">灯の部屋</a></div></div>
+</section></div></div>
+<div class="yurapon-float" aria-hidden="true"><video autoplay muted loop playsinline preload="auto"><source src="yurapon.daypage.mp4" type="video/mp4" /></video></div>
+<div class="modal" id="moreModal" aria-hidden="true"><div class="modal-panel"><div class="modal-head"><h2>もっと見る</h2><button class="close-btn" id="closeModal">閉じる</button></div><div class="modal-section"><h3>🕯️ 灯（あかり）ってなに？</h3><p>「きれいだな」「これが好き」「ちょっとムカつく」「ほっとした」。あなたの心が動いた瞬間の小さな揺れや、大切にしたい願いそのもの。</p><p>新しく作るものではなく、生まれたときからずっと、自分の中にある「命の創造エネルギー」。</p></div><div class="modal-section"><h3>🔭 なんで灯観測するといいの？</h3><p>人は、よく自分の灯が隠れて見えなくなってしまいます。</p><p>だから、「あ、いま私の心が動いたな」と見つけてあげるだけで、「私の感覚はこれでいいんだ」と安心できるもの。あなたの存在が今、たしかにここにあると認識できるから。</p></div><div class="modal-section"><h3>✨ どうなるの？</h3><p>「ちゃんとしなきゃ」という社会のルールや他人の評価から離れて、自分の人生の「操縦席」に戻ることができます。</p><p>重たい心の鎧を少し脱いで、無理せず、あなたのままで深呼吸がしやすくなります。地球が重たくなるのは、案外大事なものを全部ポケットにつっこんでるからだったり。</p></div><div class="modal-section"><h3>🛸 ゆらぽんって？</h3><p>未来の「ぽあん星」から地球に遊びに来た、ちょっと不器用な宇宙人の子。</p><p>少しカオスで混沌としている星の方が、灯は綺麗に見えるとか、、、。</p><p>地球の重力や時間に慣れていなくて、たまにラーメンをこぼしたりするけれど、あなたの「灯」を見つけるのは得意技。</p><p>正解を押し付けたり、説教したりはしません。</p><p>ただあなたの隣にいて、「あ、今の灯だね」と一緒に見つめて、たまにクスッと笑えるツッコミを入れてくれる相棒です。</p></div><div class="modal-section"><h3>🎈 なんで手放すと楽になるの？</h3><p>今あなたが疲れているのは、あなたが弱いからではなく、社会の「こうあるべき」という重い荷物を、一人で背負いすぎているからです。</p><p>その「本当は背負わなくていいもの」をぽいっと手放してみると、本来のあなたの自然なリズムに戻って、心がふっと軽くなるんです。</p><p>心も体も緩んで、今日は深く息ができる時間にしよう。</p></div></div></div>
+<script>
+const events=[
+{id:"sad",label:"悲しいことあった",light:4,energy:2,poan:3,air:"ゆれてる",headline:"ぽあん。\n悲しさの近くに、大事なものがある",resultLight:"悲しさの近くに、大事なものがある",resultMessage:"今日は感情が前に出てたね。でも、灯は今日もともってたね。"},
+{id:"tired",label:"疲れた",light:2,energy:1,poan:2,air:"ちょっと重たい",headline:"ぽあん。\n今日は守る寄りで、じゅうぶん",resultLight:"灯は奥にある。今日は守る寄り",resultMessage:"つかれたねぇ。とってもがんばってたね。"},
+{id:"fun",label:"楽しいことあった",light:5,energy:5,poan:4,air:"やわらかい",headline:"今日はどう流れてたか、みえてきたね\n人肌プラス1度で、ちょっとゆるむ",resultLight:"灯が自然に前に出てた",resultMessage:"今日は願いと動きが近かったね。灯はぽあんぽあんってともってたね。"},
+{id:"yummy",label:"美味しいもの食べた",light:4,energy:4,poan:5,air:"ほぐれてる",headline:"ぽあん。\nおなかのあたりから、やわらいでる",resultLight:"身体から灯がゆるんだ",resultMessage:"おいしいは、かなり灯だ。おなかのあたり、ぽあんってしてるねぇ。"},
+{id:"love",label:"好きな人に会えた",light:5,energy:4,poan:4,air:"ふわっとしてる",headline:"ぽあん。\n共鳴の回路が、ひらいてる",resultLight:"共鳴の灯が見えやすい日",resultMessage:"会えたことで共鳴の回路が開いた感じ。灯があったかい。"},
+{id:"walk",label:"お散歩した",light:4,energy:4,poan:4,air:"風通しがいい",headline:"ぽあん。\n地球の風で、すこしほどけた",resultLight:"流れが少し戻ってる",resultMessage:"からだを動かした分、滞りがほどけたね。灯は今日も見えてるよ。"},
+{id:"laugh",label:"ちょっと笑えた",light:4,energy:4,poan:4,air:"軽め",headline:"ぽあん。\n笑えた瞬間、灯が顔を出した",resultLight:"灯が表に顔を出した",resultMessage:"笑えた瞬間、灯がちゃんと見えてたね。"},
+{id:"nothing",label:"何もできなかった",light:3,energy:1,poan:2,air:"しずかな混線",headline:"ぽあん。\n今日は存在だけで、じゅうぶん",resultLight:"表に出なくても灯は残ってる",resultMessage:"なにもできない日、あるよねぇ。今日は存在だけで十分の流れかも。"},
+{id:"compare",label:"比べてしんどかった",light:2,energy:2,poan:1,air:"ざわついてる",headline:"ぽあん。\n人の速さじゃなくて、あなたの流れでいい",resultLight:"灯が隠れやすい日",resultMessage:"比べると灯は奥に隠れがち。でも、消えてないよ。"},
+{id:"rest",label:"ゆっくり休めた",light:4,energy:3,poan:5,air:"やさしい",headline:"ぽあん。\n休めた日は、灯の輪郭がやさしい",resultLight:"灯が落ち着いて見えやすい",resultMessage:"やすめたねぇ。その静けさ、かなりぽあんだ。"}
+];
+const state={selectedId:null};
+const eventGrid=document.getElementById('eventGrid'),selectedLine=document.getElementById('selectedLine'),poanBtn=document.getElementById('poanBtn'),summaryCard=document.getElementById('summaryCard');
+function meterWidth(v){return`${(v/5)*100}%`;}
+function renderButtons(){eventGrid.innerHTML='';events.forEach(ev=>{const btn=document.createElement('button');btn.className='event-btn'+(state.selectedId===ev.id?' selected':'');btn.type='button';btn.textContent=ev.label;btn.addEventListener('click',()=>{state.selectedId=ev.id;selectedLine.textContent=`選択中：${ev.label}`;poanBtn.disabled=false;renderButtons();});eventGrid.appendChild(btn);});}
+function applyEvent(ev){document.getElementById('headline').textContent=ev.headline;document.getElementById('resultAir').textContent=ev.air;document.getElementById('resultLight').textContent=ev.resultLight;document.getElementById('resultMessage').textContent=ev.resultMessage;document.getElementById('lightFill').style.width=meterWidth(ev.light);document.getElementById('energyFill').style.width=meterWidth(ev.energy);document.getElementById('poanFill').style.width=meterWidth(ev.poan);document.getElementById('lightValue').textContent=`${ev.light}/5`;document.getElementById('energyValue').textContent=`${ev.energy}/5`;document.getElementById('poanValue').textContent=`${ev.poan}/5`;}
+poanBtn.addEventListener('click',()=>{const ev=events.find(e=>e.id===state.selectedId);if(!ev)return;const original=poanBtn.textContent;poanBtn.disabled=true;poanBtn.textContent='ぽあん中…';summaryCard.classList.add('waiting');setTimeout(()=>{applyEvent(ev);summaryCard.classList.remove('waiting');poanBtn.textContent=original;poanBtn.disabled=false;document.querySelector('.card:last-child').scrollIntoView({behavior:'smooth',block:'center'});},780);});
+renderButtons();
+const modal=document.getElementById('moreModal');document.getElementById('moreBtn').addEventListener('click',()=>modal.classList.add('show'));document.getElementById('closeModal').addEventListener('click',()=>modal.classList.remove('show'));modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('show');});document.addEventListener('keydown',e=>{if(e.key==='Escape')modal.classList.remove('show');});
+</script>
+</body>
+</html>

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>灯の部屋｜ゆらぽん</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    width: 100%;
+    min-height: 100vh;
+    background: #0a0618;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    color: #e8e0f5;
+    overflow-x: hidden;
+  }
+
+  /* ============================================
+     舞台：縦長スマホ基準のステージ
+     PCではセンタリングして縦長を保つ
+     ============================================ */
+  .stage-wrapper {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    background: #0a0618;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 480px;        /* スマホ幅基準。PCでもこの幅で縦長表示 */
+    min-height: 100vh;
+    background-image: url('assets/room_bg.png');
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    overflow: hidden;
+  }
+
+  /* PCの縦長保持：高さに対して幅をスマホ比率に合わせる */
+  @media (min-aspect-ratio: 1/1) {
+    .stage {
+      max-width: min(480px, 46vh);
+    }
+  }
+
+  /* ============================================
+     スクロール可能な部屋本体
+     キャンドルが点在する縦長キャンバス
+     ============================================ */
+  .room {
+    position: relative;
+    width: 100%;
+    /* 背景画像のアスペクト比 1290:2796 を保ったキャンバス高 */
+    aspect-ratio: 1290 / 2796;
+    min-height: 100vh;
+  }
+
+  /* ============================================
+     キャンドル（プレースホルダ）
+     後で画像差し替え予定
+     ============================================ */
+  .candle {
+    position: absolute;
+    width: 56px;
+    height: 80px;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    transition: transform 0.4s ease;
+    animation: flicker 4s ease-in-out infinite;
+  }
+
+  .candle:active {
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+
+  /* プレースホルダの炎＋ロウソク */
+  .candle-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .flame {
+    width: 14px;
+    height: 22px;
+    background: radial-gradient(ellipse at center bottom,
+      #fff8c0 0%,
+      #ffe8a0 30%,
+      #ffb060 60%,
+      rgba(255, 140, 80, 0.4) 85%,
+      transparent 100%);
+    border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%;
+    margin-bottom: -2px;
+    box-shadow:
+      0 0 12px rgba(255, 200, 120, 0.7),
+      0 0 24px rgba(255, 180, 100, 0.4);
+    animation: flame-dance 3s ease-in-out infinite;
+  }
+
+  .body {
+    width: 18px;
+    height: 36px;
+    background: linear-gradient(to bottom,
+      rgba(255, 240, 220, 0.85) 0%,
+      rgba(220, 200, 220, 0.75) 50%,
+      rgba(180, 160, 200, 0.65) 100%);
+    border-radius: 3px 3px 2px 2px;
+    box-shadow: 0 0 8px rgba(255, 220, 180, 0.3);
+  }
+
+  .glow {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle,
+      rgba(255, 200, 120, 0.25) 0%,
+      rgba(255, 180, 100, 0.1) 40%,
+      transparent 70%);
+    pointer-events: none;
+    animation: glow-pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.92; }
+  }
+
+  @keyframes flame-dance {
+    0%, 100% { transform: scaleY(1) translateX(0); }
+    25% { transform: scaleY(1.08) translateX(-0.5px); }
+    50% { transform: scaleY(0.95) translateX(0.5px); }
+    75% { transform: scaleY(1.05) translateX(-0.3px); }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* ============================================
+     ポップアップ（その日の灯詳細）
+     ============================================ */
+  .popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 6, 24, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+    padding: 24px;
+  }
+
+  .popup-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .popup {
+    background: rgba(30, 20, 50, 0.6);
+    border: 1px solid rgba(255, 220, 180, 0.2);
+    border-radius: 16px;
+    padding: 36px 28px;
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+    transform: translateY(20px);
+    transition: transform 0.6s ease;
+  }
+
+  .popup-overlay.show .popup {
+    transform: translateY(0);
+  }
+
+  .popup-candle {
+    width: 80px;
+    height: 100px;
+    margin: 0 auto 20px;
+    position: relative;
+  }
+
+  .popup-candle .flame {
+    width: 18px;
+    height: 28px;
+    margin: 0 auto -2px;
+  }
+
+  .popup-candle .body {
+    width: 24px;
+    height: 48px;
+    margin: 0 auto;
+  }
+
+  .popup-candle .glow {
+    width: 100px;
+    height: 100px;
+  }
+
+  .popup-date {
+    font-size: 12px;
+    color: rgba(232, 224, 245, 0.6);
+    letter-spacing: 0.15em;
+    margin-bottom: 14px;
+  }
+
+  .popup-word {
+    font-size: 16px;
+    line-height: 1.9;
+    color: #f5ecd9;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+  }
+
+  /* ============================================
+     動画オーバーレイ（スキップ不可）
+     ============================================ */
+  .video-overlay {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 200;
+    display: none;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .video-overlay.show {
+    display: flex;
+  }
+
+  .video-overlay video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* ============================================
+     開発用デバッグパネル（本番では非表示）
+     ============================================ */
+  .debug-panel {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+  }
+
+  .debug-panel:hover {
+    opacity: 1;
+  }
+
+  .debug-panel button {
+    background: rgba(40, 30, 60, 0.8);
+    color: rgba(232, 224, 245, 0.7);
+    border: 1px solid rgba(255, 220, 180, 0.2);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 10px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+  }
+
+  .debug-panel button:hover {
+    background: rgba(50, 40, 70, 0.9);
+  }
+
+  /* スクロールバー消し */
+  ::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage-wrapper">
+  <div class="stage">
+    <div class="room" id="room">
+      <!-- キャンドルはJSで動的配置 -->
+    </div>
+  </div>
+</div>
+
+<!-- ポップアップ -->
+<div class="popup-overlay" id="popupOverlay">
+  <div class="popup">
+    <div class="popup-candle">
+      <div class="glow"></div>
+      <div class="candle-placeholder">
+        <div class="flame"></div>
+        <div class="body"></div>
+      </div>
+    </div>
+    <div class="popup-date" id="popupDate"></div>
+    <div class="popup-word" id="popupWord"></div>
+  </div>
+</div>
+
+<!-- 動画オーバーレイ -->
+<div class="video-overlay" id="videoOverlay">
+  <video id="ritualVideo" playsinline></video>
+</div>
+
+<!-- デバッグパネル（テスト用：本番削除予定） -->
+<div class="debug-panel">
+  <button onclick="testVideo('single')">▶ single再生</button>
+  <button onclick="testVideo('rantan')">▶ rantan再生</button>
+  <button onclick="resetData()">↻ データリセット</button>
+</div>
+
+<script>
+  // ============================================
+  // 仮データ：20件
+  // 実装時はメインページから localStorage に書き込まれる
+  // ============================================
+  const SAMPLE_WORDS = [
+    "もういいよ、で今日は閉じる",
+    "ゆっくりしよ",
+    "そのうちでいいんだ",
+    "なんかちょっと疲れた、それだけ",
+    "わたしはわたしのままでいい",
+    "今日はここまで",
+    "静かにしてていい日",
+    "ふっと息を吐く",
+    "戻ってきた感じがする",
+    "なにもしなくていい",
+    "ぼんやりしていた",
+    "灯がついてるだけで十分",
+    "言葉にならない日もある",
+    "ゆれてた、ただそれだけ",
+    "落ち着く場所があるって、いいな",
+    "ちょっと泣いた",
+    "なんでもない一日もある",
+    "じわっと、あったかかった",
+    "止まっていい",
+    "ここに戻ってこれる"
+  ];
+
+  // 仮データ生成（過去20日分）
+  function generateSampleData() {
+    const data = [];
+    const today = new Date();
+    for (let i = 0; i < 20; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      data.push({
+        date: d.toISOString().split('T')[0],
+        word: SAMPLE_WORDS[i % SAMPLE_WORDS.length],
+        candleType: (i % 5) + 1  // 1〜5（5種類のキャンドル）
+      });
+    }
+    return data;
+  }
+
+  // localStorage キー設計（メインページと共有予定）
+  const STORAGE_KEY = 'yurapon_akari_records';
+  const VISIT_KEY = 'yurapon_last_visit';
+  const VIEWED_COUNT_KEY = 'yurapon_viewed_count';  // single動画用
+
+  function getRecords() {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch(e) {}
+    }
+    // 初回 or データなし → サンプルを入れる
+    const sample = generateSampleData();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sample));
+    return sample;
+  }
+
+  // ============================================
+  // キャンドル配置
+  // 画面の左右に偏らず、上下にもバラけるように
+  // ============================================
+  function placeCandles() {
+    const room = document.getElementById('room');
+    const records = getRecords();
+
+    // 単純なランダムだと固まるので、グリッド+ジッタで配置
+    // 縦長キャンバスを 4列 × N行 に分割し、各セル内でランダムずらし
+    const cols = 4;
+    const padding = 12; // %
+    const usableWidth = 100 - padding * 2;
+    const cellWidth = usableWidth / cols;
+
+    const verticalStart = 8;   // 上 %
+    const verticalEnd = 92;    // 下 %
+    const verticalRange = verticalEnd - verticalStart;
+
+    // 件数に応じて行数決定
+    const rows = Math.ceil(records.length / cols);
+    const cellHeight = verticalRange / rows;
+
+    records.forEach((rec, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+
+      // セル中心 + ランダムジッタ
+      const baseX = padding + cellWidth * col + cellWidth / 2;
+      const baseY = verticalStart + cellHeight * row + cellHeight / 2;
+
+      const jitterX = (Math.random() - 0.5) * cellWidth * 0.6;
+      const jitterY = (Math.random() - 0.5) * cellHeight * 0.5;
+
+      const x = baseX + jitterX;
+      const y = baseY + jitterY;
+
+      const candle = createCandle(rec, x, y);
+      room.appendChild(candle);
+    });
+  }
+
+  function createCandle(record, xPercent, yPercent) {
+    const candle = document.createElement('div');
+    candle.className = 'candle';
+    candle.style.left = xPercent + '%';
+    candle.style.top = yPercent + '%';
+
+    // ちょっとずつアニメーションのタイミングをずらす
+    const delay = Math.random() * 4;
+    candle.style.animationDelay = `-${delay}s`;
+
+    candle.innerHTML = `
+      <div class="glow"></div>
+      <div class="candle-placeholder">
+        <div class="flame" style="animation-delay: -${delay}s"></div>
+        <div class="body"></div>
+      </div>
+    `;
+
+    candle.addEventListener('click', () => openPopup(record));
+
+    return candle;
+  }
+
+  // ============================================
+  // ポップアップ
+  // ============================================
+  function openPopup(record) {
+    const overlay = document.getElementById('popupOverlay');
+    const dateEl = document.getElementById('popupDate');
+    const wordEl = document.getElementById('popupWord');
+
+    // 日付フォーマット
+    const d = new Date(record.date);
+    const formatted = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    dateEl.textContent = formatted;
+    wordEl.textContent = record.word;
+
+    overlay.classList.add('show');
+  }
+
+  // オーバーレイのどこを押しても閉じる
+  document.getElementById('popupOverlay').addEventListener('click', () => {
+    document.getElementById('popupOverlay').classList.remove('show');
+  });
+
+  // ============================================
+  // 動画再生ロジック
+  // ============================================
+  function playVideo(src, onEnd) {
+    const overlay = document.getElementById('videoOverlay');
+    const video = document.getElementById('ritualVideo');
+
+    video.src = src;
+    video.muted = false;
+    video.controls = false;
+
+    overlay.classList.add('show');
+
+    video.play().catch(err => {
+      // 自動再生ブロックされたらミュートで再試行
+      video.muted = true;
+      video.play().catch(() => {});
+    });
+
+    video.onended = () => {
+      overlay.classList.remove('show');
+      video.src = '';
+      if (onEnd) onEnd();
+    };
+  }
+
+  // ============================================
+  // 入室時の動画判定
+  // 優先順位：rantan（月初）> single（10件ごと）> なし
+  // ============================================
+  function checkVideoTrigger() {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const lastVisit = localStorage.getItem(VISIT_KEY);
+
+    const records = getRecords();
+    const recordCount = records.length;
+
+    // 同じ日に既に来てたら何も流さない
+    if (lastVisit === todayStr) {
+      return;
+    }
+
+    // 月初判定：今月、まだ一度も入室してない
+    const isFirstOfMonth = !lastVisit ||
+      new Date(lastVisit).getMonth() !== today.getMonth() ||
+      new Date(lastVisit).getFullYear() !== today.getFullYear();
+
+    localStorage.setItem(VISIT_KEY, todayStr);
+
+    if (isFirstOfMonth) {
+      playVideo('assets/yurapon_rantan.mp4');
+      return;
+    }
+
+    // 10件ごと判定：前回見せた件数と差で判断
+    const lastViewedCount = parseInt(localStorage.getItem(VIEWED_COUNT_KEY) || '0', 10);
+    const milestonesPassed = Math.floor(recordCount / 10);
+    const lastMilestone = Math.floor(lastViewedCount / 10);
+
+    if (milestonesPassed > lastMilestone) {
+      localStorage.setItem(VIEWED_COUNT_KEY, recordCount.toString());
+      playVideo('assets/yurapon_single.mov');
+    } else {
+      localStorage.setItem(VIEWED_COUNT_KEY, recordCount.toString());
+    }
+  }
+
+  // ============================================
+  // デバッグ用関数
+  // ============================================
+  function testVideo(type) {
+    if (type === 'single') {
+      playVideo('assets/yurapon_single.mov');
+    } else {
+      playVideo('assets/yurapon_rantan.mp4');
+    }
+  }
+
+  function resetData() {
+    if (confirm('データをリセットしてサンプル20件を入れ直す？')) {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(VISIT_KEY);
+      localStorage.removeItem(VIEWED_COUNT_KEY);
+      location.reload();
+    }
+  }
+
+  // ============================================
+  // 起動
+  // ============================================
+  window.addEventListener('DOMContentLoaded', () => {
+    placeCandles();
+    // 動画判定は少し遅らせて、部屋が見えた状態から入る
+    setTimeout(checkVideoTrigger, 300);
+  });
+</script>
+
+</body>
+</html>

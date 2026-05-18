@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ゆらぽん ・ 積もり</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="archive">
+
+  <p class="kana">これまで、灯してきた夜</p>
+
+  <div id="months" aria-hidden="true"></div>
+
+  <p class="empty" id="empty" hidden>まだ、しずか。</p>
+
+</main>
+
+<figure class="yurapon at-archive" aria-hidden="true">
+  <div class="wrap"><img src="yurapon.jpg" alt=""></div>
+</figure>
+
+<a class="back" href="garden.html" data-fade>・ もどる ・</a>
+
+<script src="ambient.js"></script>
+<script>
+(function(){
+  const container = document.getElementById('months');
+  const empty = document.getElementById('empty');
+
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem('yurapon.history') || '[]'); } catch(e){}
+
+  const kinds = ['powa','gyu','zawa','fuwa','karappo'];
+  const params = new URLSearchParams(location.search);
+  const seedMode = params.get('seed');
+
+  // 明示的にシード指定（?seed=1y 等）→ 完全にデモデータで置換
+  if (seedMode){
+    const days = seedMode === '1y' ? 365 : seedMode === '3m' ? 90 : seedMode === '1m' ? 30 : 60;
+    history = [];
+    const today = new Date();
+    for (let i = days - 1; i >= 0; i--){
+      if (Math.random() > 0.22){
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        history.push({
+          date: d.toISOString().slice(0,10),
+          kind: kinds[Math.floor(Math.random() * kinds.length)],
+          ts: d.getTime()
+        });
+      }
+    }
+  }
+  // プロトタイプ表示用：記録がまだ少ないときは 1年分の灯で埋めて「積もり」を見せる
+  else if (history.length < 20){
+    const recorded = new Set(history.map(h => h.date));
+    const today = new Date();
+    for (let i = 364; i >= 0; i--){
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const iso = d.toISOString().slice(0,10);
+      if (recorded.has(iso)) continue;
+      if (Math.random() > 0.28){
+        history.push({
+          date: iso,
+          kind: kinds[Math.floor(Math.random() * kinds.length)],
+          ts: d.getTime()
+        });
+      }
+    }
+    history.sort((a,b) => a.ts - b.ts);
+  }
+
+  if (!history.length){ empty.hidden = false; return; }
+
+  // 月ごとにグループ化（新しい順）
+  const byMonth = {};
+  history.forEach(h => {
+    const m = h.date.slice(0, 7);
+    (byMonth[m] = byMonth[m] || []).push(h);
+  });
+  const months = Object.keys(byMonth).sort().reverse();
+
+  // 決定論的 rand（同じキーなら同じ配置）
+  const seed = (s) => {
+    let h = 2166136261;
+    for (let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return () => {
+      h = Math.imul(h ^ (h >>> 15), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      return ((h ^= h >>> 16) >>> 0) / 4294967296;
+    };
+  };
+
+  const tinted = {
+    powa:    { flame:'#ffd59a', wax:'#f2e4c4' },
+    gyu:     { flame:'#f1b98a', wax:'#e6d2ae' },
+    zawa:    { flame:'#cfc7af', wax:'#d9cfb6' },
+    fuwa:    { flame:'#ffe6b8', wax:'#f7ecd6' },
+    karappo: { flame:'#c4bfc0', wax:'#c8c4c0' }
+  };
+
+  const shapes = [
+    (wax) => `<path d="M 10 12 Q 9 16 10 22 L 10 54 Q 10 58 14 58 Q 18 58 18 54 L 18 22 Q 19 16 18 12 Z" fill="${wax}" stroke="rgba(40,28,12,0.45)" stroke-width="0.8"/>`,
+    (wax) => `<path d="M 11 12 Q 9 16 9 22 L 8 52 Q 8 58 13 58 Q 19 58 20 54 L 19 22 Q 19 16 18 12 Z" fill="${wax}" stroke="rgba(40,28,12,0.45)" stroke-width="0.8"/>`,
+    (wax) => `<path d="M 11 10 Q 10 14 11 20 L 11 54 Q 11 58 14 58 Q 17 58 17 54 L 17 20 Q 18 14 17 10 Z" fill="${wax}" stroke="rgba(40,28,12,0.45)" stroke-width="0.8"/>`,
+    (wax) => `<path d="M 8 14 Q 7 18 8 24 L 8 54 Q 8 58 14 58 Q 20 58 20 54 L 20 24 Q 21 18 20 14 Z" fill="${wax}" stroke="rgba(40,28,12,0.45)" stroke-width="0.8"/>`,
+  ];
+
+  const kanji = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+
+  months.forEach((m) => {
+    const [year, mm] = m.split('-');
+    const records = byMonth[m];
+
+    const block = document.createElement('section');
+    block.className = 'month-field';
+    // 記録が多いほど縦に広がる＝積み重なりが視覚化される
+    const vh = Math.min(90, 45 + records.length * 4);
+    block.style.minHeight = vh + 'vh';
+
+    const label = document.createElement('span');
+    label.className = 'month-label';
+    label.textContent = kanji[parseInt(mm,10)-1] + '月';
+    block.appendChild(label);
+
+    const yearLabel = document.createElement('span');
+    yearLabel.className = 'year-label';
+    yearLabel.textContent = year;
+    block.appendChild(yearLabel);
+
+    records.forEach((h, i) => {
+      const rand = seed(h.date + ':' + h.kind + ':' + i + ':' + m);
+      // 月エリア内にゆるく散らばる（端から少し余白）
+      const x = 8 + rand() * 84;
+      const y = 18 + rand() * 72;
+      const rot = (rand() - 0.5) * 14;
+      // サイズはかなり幅広くランダムに（小さい・中くらい・大きい）
+      const scale = 0.7 + Math.pow(rand(), 0.8) * 2.2;   // 0.7〜2.9
+      const delay = rand() * 2.0;
+      const c = tinted[h.kind] || tinted.powa;
+      const shapeIdx = Math.floor(rand() * shapes.length);
+      const flameH = 3.2 + rand() * 3.2;   // 3.2〜6.4
+      const flameW = 1.9 + rand() * 1.3;   // 1.9〜3.2
+      const isEmpty = h.kind === 'karappo';
+
+      const el = document.createElement('div');
+      el.className = 'candle-tiny';
+      el.style.left = x + '%';
+      el.style.top  = y + '%';
+      el.style.transform = `translate(-50%,-50%) rotate(${rot}deg) scale(${scale})`;
+      el.style.animationDelay = delay + 's';
+      el.innerHTML = `
+        <div class="mini-halo" style="background: radial-gradient(circle, ${c.flame}66 0%, ${c.flame}22 40%, transparent 70%);"></div>
+        <svg width="28" height="60" viewBox="0 0 28 60" aria-hidden="true">
+          <ellipse cx="14" cy="4" rx="${flameW}" ry="${flameH}" fill="${c.flame}" opacity="${isEmpty?0.35:0.95}">
+            <animate attributeName="ry" values="${flameH};${flameH+0.6};${flameH-0.4};${flameH}" dur="${2.4 + rand()*1.8}s" repeatCount="indefinite"/>
+          </ellipse>
+          <path d="M 14 6 L 14 10" stroke="#3a2a16" stroke-width="1" stroke-linecap="round"/>
+          ${shapes[shapeIdx](c.wax)}
+        </svg>
+      `;
+      block.appendChild(el);
+    });
+
+    container.appendChild(block);
+  });
+})();
+</script>
+</body>
+</html>
