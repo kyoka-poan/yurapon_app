@@ -1,0 +1,21 @@
+{
+  "name": "ゆらぽん 灯観測装置",
+  "short_name": "ゆらぽん",
+  "description": "毎日の灯を、そっと観測するアプリ。",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1a1638",
+  "theme_color": "#1a1638",
+  "icons": [
+    {
+      "src": "assets/img/icon_yurapon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/img/icon_yurapon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
